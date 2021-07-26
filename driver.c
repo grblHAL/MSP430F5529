@@ -671,10 +671,8 @@ bool driver_init (void)
     SYSTICK_TIMER_CCR0 = 1;
     SYSTICK_TIMER_CCTL0 |= CCIE;
 
-    serialInit();
-
     hal.info = "MSP430F5529";
-    hal.driver_version = "210626";
+    hal.driver_version = "210716";
     hal.driver_setup = driver_setup;
     hal.f_step_timer = 24000000;
     hal.rx_buffer_size = RX_BUFFER_SIZE;
@@ -707,13 +705,7 @@ bool driver_init (void)
 
     hal.control.get_state = systemGetState;
 
-    hal.stream.read = serialGetC;
-    hal.stream.write = serialWriteS;
-    hal.stream.write_all = serialWriteS;
-    hal.stream.write_char = serialPutC;
-    hal.stream.get_rx_buffer_free = serialRxFree;
-    hal.stream.reset_read_buffer = serialRxFlush;
-    hal.stream.cancel_read_buffer = serialRxCancel;
+    memcpy(&hal.stream, serialInit(), sizeof(io_stream_t));
 
 #ifdef EEPROM_ENABLE
     i2c_init();

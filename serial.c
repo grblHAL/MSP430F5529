@@ -1,13 +1,13 @@
 //
 // serial.c - serial (UART) port library
 //
-// v1.0 / 2019-06-03 / Io Engineering / Terje
+// v1.1 / 2021-07-15 / Io Engineering / Terje
 //
 //
 
 /*
 
-Copyright (c) 2015-2019, Terje Io
+Copyright (c) 2015-2021, Terje Io
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -43,11 +43,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "serial.h"
 #include "grbl/hal.h"
-
-#define BUFCOUNT(head, tail, size) ((head >= tail) ? (head - tail) : (size - tail + head))
+#include "grbl/protocol.h"
 
 static char txbuf[TX_BUFFER_SIZE];
 static char rxbuf[RX_BUFFER_SIZE];
+static enqueue_realtime_command_ptr enqueue_realtime_command = protocol_enqueue_realtime_command;
 
 const char eol[] = "\r\n";
 static volatile uint16_t tx_head = 0, tx_tail = 0, rx_head = 0, rx_tail = 0, rx_overflow = 0;
@@ -56,55 +56,37 @@ static volatile uint16_t tx_head = 0, tx_tail = 0, rx_head = 0, rx_tail = 0, rx_
     static volatile unsigned int rx_off = XONOK;
 #endif
 
-inline void setUCA1BR (uint16_t prescaler)
+static inline void setUCA1BR (uint16_t prescaler)
 {
     UCA1BR0 = prescaler & 0xFF; // LSB
     UCA1BR1 = prescaler >> 8;   // MSB
 }
-
-void serialInit (void)
-{
-    UCA1CTL1 = UCSWRST;
-    UCA1CTL1 |= UCSSEL_2;   // Use SMCLK
-    setUCA1BR(217);         // Set baudrate to 115200 @ 25MHz SMCLK
-    UCA1MCTL = 0;           // Modulation UCBRSx=0, UCBRFx=0
-    UCA1CTL0 = 0;           // 8 bit, 1 stop bit, no parity
-    SERIAL_SEL |= SERIAL_RXD|SERIAL_TXD;
-    UCA1CTL1 &= ~UCSWRST;   // Initialize USCI state machine
-    UCA1IE |= UCRXIE;       // Enable USCI_A0 RX interrupt
-
-#ifndef XONXOFF
-    SERIAL_RTS_PORT_DIR |= SERIAL_RTS_BIT;  // Enable RTS pin
-    SERIAL_RTS_PORT_OUT &= ~SERIAL_RTS_BIT; // and drive it low
-#endif
-
-}
-
-uint16_t serialTxCount (void)
+/*
+static uint16_t serialTxCount (void)
 {
   uint16_t tail = tx_tail;
   return BUFCOUNT(tx_head, tail, TX_BUFFER_SIZE);
 }
 
-uint16_t serialRxCount (void)
+static uint16_t serialRxCount (void)
 {
   uint16_t tail = rx_tail, head = rx_head;
   return BUFCOUNT(head, tail, RX_BUFFER_SIZE);
 }
-
-uint16_t serialRxFree (void)
+*/
+static uint16_t serialRxFree (void)
 {
   unsigned int tail = rx_tail, head = rx_head;
   return RX_BUFFER_SIZE - BUFCOUNT(head, tail, RX_BUFFER_SIZE);
 }
 
-void serialRxFlush (void)
+static void serialRxFlush (void)
 {
     rx_head = rx_tail = 0;
     SERIAL_RTS_PORT_OUT &= ~SERIAL_RTS_BIT;
 }
 
-void serialRxCancel (void)
+static void serialRxCancel (void)
 {
     rxbuf[rx_head] = ASCII_CAN;
     rx_tail = rx_head;
@@ -112,7 +94,7 @@ void serialRxCancel (void)
     SERIAL_RTS_PORT_OUT &= ~SERIAL_RTS_BIT;;
 }
 
-bool serialPutC(const char data)
+static bool serialPutC (const char data)
 {
     unsigned int next_head = tx_head;
 
@@ -134,8 +116,8 @@ bool serialPutC(const char data)
     return true;
 }
 
-int16_t serialGetC (void) {
-
+static int16_t serialGetC (void)
+{
     if(rx_tail == rx_head)
         return -1;
 
@@ -164,27 +146,69 @@ int16_t serialGetC (void) {
     return (int16_t)data;
 }
 
-void serialWriteS(const char *data) {
+static void serialWriteS (const char *data)
+{
 
     char c, *ptr = (char *)data;
 
     while((c = *ptr++) != '\0')
         serialPutC(c);
-
 }
-
-void serialWriteLn(const char *data) {
+/*
+static void serialWriteLn (const char *data)
+{
     serialWriteS(data);
     serialWriteS(eol);
 }
 
-void serialWrite(const char *data, uint16_t length) {
-
+static void serialWrite (const char *data, uint16_t length)
+{
     char *ptr = (char *)data;
 
     while(length--)
         serialPutC(*ptr++);
+}
+*/
+static enqueue_realtime_command_ptr serialSetRtHandler (enqueue_realtime_command_ptr handler)
+{
+    enqueue_realtime_command_ptr prev = enqueue_realtime_command;
 
+    if(handler)
+        enqueue_realtime_command = handler;
+
+    return prev;
+}
+
+const io_stream_t *serialInit (void)
+{
+    static const io_stream_t stream = {
+        .type = StreamType_Serial,
+        .connected = true,
+        .read = serialGetC,
+        .write = serialWriteS,
+        .write_char = serialPutC,
+        .write_all = serialWriteS,
+        .get_rx_buffer_free = serialRxFree,
+        .reset_read_buffer = serialRxFlush,
+        .cancel_read_buffer = serialRxCancel,
+        .set_enqueue_rt_handler = serialSetRtHandler
+    };
+
+    UCA1CTL1 = UCSWRST;
+    UCA1CTL1 |= UCSSEL_2;   // Use SMCLK
+    setUCA1BR(217);         // Set baudrate to 115200 @ 25MHz SMCLK
+    UCA1MCTL = 0;           // Modulation UCBRSx=0, UCBRFx=0
+    UCA1CTL0 = 0;           // 8 bit, 1 stop bit, no parity
+    SERIAL_SEL |= SERIAL_RXD|SERIAL_TXD;
+    UCA1CTL1 &= ~UCSWRST;   // Initialize USCI state machine
+    UCA1IE |= UCRXIE;       // Enable USCI_A0 RX interrupt
+
+#ifndef XONXOFF
+    SERIAL_RTS_PORT_DIR |= SERIAL_RTS_BIT;  // Enable RTS pin
+    SERIAL_RTS_PORT_OUT &= ~SERIAL_RTS_BIT; // and drive it low
+#endif
+
+    return &stream;
 }
 
 #pragma vector=USCI_A1_VECTOR
@@ -204,7 +228,7 @@ __interrupt void USCI1RX_ISR(void)
             next_head = UCA1RXBUF;              // and do dummy read to clear interrupt
         } else {
             char data = UCA1RXBUF;
-            if(!hal.stream.enqueue_realtime_command(data)) {
+            if(!enqueue_realtime_command(data)) {
                 rxbuf[rx_head] = data;                  // Add data to buffer
                 rx_head = next_head;                    // and update pointer
             }

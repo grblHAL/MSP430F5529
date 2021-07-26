@@ -1,13 +1,13 @@
 //
 // serial.h - serial (UART) port library
 //
-// v1.0 / 2019-06-03 / Io Engineering / Terje
+// v1.1 / 2021-07-15 / Io Engineering / Terje
 //
 //
 
 /*
 
-Copyright (c) 2015-2019, Terje Io
+Copyright (c) 2015-2021, Terje Io
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "portmacros.h"
+#include "grbl/stream.h"
 
 #define XONOK (ASCII_XON|0x80)
 #define XOFFOK (ASCII_XOFF|0x80)
@@ -60,15 +61,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /* UART */
 
-void serialInit (void);
-uint16_t serialTxCount (void);
-uint16_t serialRxCount (void);
-uint16_t serialRxFree (void);
-void serialRxFlush (void);
-void serialRxCancel (void);
-int16_t serialGetC (void);
-bool serialPutC (const char data);
-void serialWriteS (const char *data);
-void serialWriteLn (const char *data);
-void serialWrite (const char *data, uint16_t length);
+const io_stream_t *serialInit (void);
 
+/*EOF*/
