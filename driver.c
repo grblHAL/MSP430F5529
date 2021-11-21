@@ -214,7 +214,7 @@ inline static control_signals_t systemGetState (void)
     signals.reset            = (flags & RESET_PIN) == RESET_PIN;
     signals.feed_hold        = (flags & FEED_HOLD_PIN) == FEED_HOLD_PIN;
     signals.cycle_start      = (flags & CYCLE_START_PIN) == CYCLE_START_PIN;
-#ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+#ifdef SAFETY_DOOR_PIN
     signals.safety_door_ajar = (flags & SAFETY_DOOR_PIN) == SAFETY_DOOR_PIN;
 #endif
 
