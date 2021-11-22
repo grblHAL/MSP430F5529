@@ -650,7 +650,7 @@ static bool driver_setup (settings_t *settings)
 
   // Set defaults
 
-    IOInitDone = settings->version == 19;
+    IOInitDone = settings->version == 21;
 
     hal.settings_changed(settings);
     hal.stepper.go_idle(true);
@@ -672,7 +672,7 @@ bool driver_init (void)
     SYSTICK_TIMER_CCTL0 |= CCIE;
 
     hal.info = "MSP430F5529";
-    hal.driver_version = "210716";
+    hal.driver_version = "211121";
     hal.driver_setup = driver_setup;
     hal.f_step_timer = 24000000;
     hal.rx_buffer_size = RX_BUFFER_SIZE;
@@ -745,7 +745,7 @@ bool driver_init (void)
     my_plugin_init();
 
     // no need to move version check before init - compiler will fail any signature mismatch for existing entries
-    return hal.version == 8;
+    return hal.version == 9;
 }
 
 /* interrupt handlers */
