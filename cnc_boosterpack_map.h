@@ -114,7 +114,6 @@
 #define RESET_PIN           BIT5
 #define FEED_HOLD_PIN       BIT3
 #define CYCLE_START_PIN     BIT2
-#define SAFETY_DOOR_PIN     BIT4
 #define CONTROL_PORT_OUT    portOut(CONTROL_PORT)
 #define CONTROL_PORT_IN     portIn(CONTROL_PORT)
 #define CONTROL_PORT_DIR    portDir(CONTROL_PORT)
@@ -123,7 +122,12 @@
 #define CONTROL_PORT_IES    portEs(CONTROL_PORT)
 #define CONTROL_PORT_IFG    portIfg(CONTROL_PORT)
 #define CONTROL_PORT_VECTOR portInt(CONTROL_PORT)
+#if SAFETY_DOOR_ENABLE
+#define SAFETY_DOOR_PIN     BIT4
 #define HWCONTROL_MASK      (RESET_PIN|FEED_HOLD_PIN|CYCLE_START_PIN|SAFETY_DOOR_PIN)
+#else
+#define HWCONTROL_MASK      (RESET_PIN|FEED_HOLD_PIN|CYCLE_START_PIN)
+#endif
 
 // Define probe switch input pin.
 #define PROBE_PORT      2

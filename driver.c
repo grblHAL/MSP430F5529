@@ -455,8 +455,10 @@ static void settings_changed (settings_t *settings)
         control_signals_t control_ies;
         control_ies.mask = ~(settings->control_disable_pullup.mask ^ settings->control_invert.mask);
 
+#ifdef SAFETY_DOOR_PIN
         CONTROL_PORT_IE &= ~HWCONTROL_MASK;         // Disable control pins change interrupt
         CONTROL_PORT_DIR &= ~HWCONTROL_MASK;         // Disable control pins change interrupt
+#endif
 
         if(settings->control_disable_pullup.cycle_start)
             CONTROL_PORT_OUT &= ~CYCLE_START_PIN;
@@ -473,10 +475,12 @@ static void settings_changed (settings_t *settings)
         else
             CONTROL_PORT_OUT |= RESET_PIN;
 
+#ifdef SAFETY_DOOR_PIN
         if(settings->control_disable_pullup.safety_door_ajar)
             CONTROL_PORT_OUT &= ~SAFETY_DOOR_PIN;
         else
             CONTROL_PORT_OUT |= SAFETY_DOOR_PIN;
+#endif
 
         if(control_ies.cycle_start)
             CONTROL_PORT_IES &= ~CYCLE_START_PIN;
@@ -493,10 +497,12 @@ static void settings_changed (settings_t *settings)
         else
             CONTROL_PORT_IES |= RESET_PIN;
 
+#ifdef SAFETY_DOOR_PIN
         if(control_ies.safety_door_ajar)
             CONTROL_PORT_IES &= ~SAFETY_DOOR_PIN;
         else
             CONTROL_PORT_IES |= SAFETY_DOOR_PIN;
+#endif
 
         CONTROL_PORT_REN |= HWCONTROL_MASK;     // Enable pull-ups/pull-down,
         CONTROL_PORT_IFG &= ~HWCONTROL_MASK;    // clear any pending interrupt
@@ -672,7 +678,7 @@ bool driver_init (void)
     SYSTICK_TIMER_CCTL0 |= CCIE;
 
     hal.info = "MSP430F5529";
-    hal.driver_version = "211121";
+    hal.driver_version = "211126";
     hal.driver_setup = driver_setup;
     hal.f_step_timer = 24000000;
     hal.rx_buffer_size = RX_BUFFER_SIZE;
