@@ -5,7 +5,7 @@
 
   Part of grblHAL
 
-  Copyright (c) 2016-2021 Terje Io
+  Copyright (c) 2016-2022 Terje Io
   Copyright (c) 2011-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -32,6 +32,7 @@
 #include "grbl/grbl.h"
 #include "grbl/limits.h"
 #include "grbl/nuts_bolts.h"
+#include "grbl/state_machine.h"
 
 #ifdef EEPROM_ENABLE
 #include "i2c.h"
@@ -55,8 +56,10 @@ static void driver_delay_ms (uint32_t ms, void (*callback)(void))
     if((delay.ms = ms > 0)) {
         SYSTICK_TIMER_CCR0 = ms;
         SYSTICK_TIMER_CTL |= TACLR|MC0;
-        if(!(delay.callback = callback))
-            while(delay.ms);
+        if(!(delay.callback = callback)) {
+            while(delay.ms)
+                grbl.on_execute_delay(state_get());
+        }
     } else if(callback)
         callback();
 }
@@ -678,7 +681,7 @@ bool driver_init (void)
     SYSTICK_TIMER_CCTL0 |= CCIE;
 
     hal.info = "MSP430F5529";
-    hal.driver_version = "211126";
+    hal.driver_version = "220111";
     hal.driver_setup = driver_setup;
     hal.f_step_timer = 24000000;
     hal.rx_buffer_size = RX_BUFFER_SIZE;
